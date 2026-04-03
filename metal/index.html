@@ -1975,13 +1975,11 @@
       }
 
       function hasPhoneForMetalSkip() {
-        if (sessionStorage.getItem('shubhmay_kundli_preview_done') === '1') return true;
-        var p = sessionStorage.getItem('shubhmay_metal_finder_phone');
-        return !!(p && /^[6-9]\d{9}$/.test(p));
+        return true;
       }
 
       function getWhatsAppPhoneForEmit() {
-        var p = sessionStorage.getItem('shubhmay_metal_finder_phone') || sessionStorage.getItem('shubhmay_kundli_preview_phone');
+        var p = sessionStorage.getItem('shubhmay_kundli_preview_phone');
         return p && /^[6-9]\d{9}$/.test(p) ? p : '';
       }
 
@@ -2019,28 +2017,8 @@
         }
       }
 
-      function saveMetalFinderLead(payload) {
-        if (sessionStorage.getItem('shubhmay_kundli_preview_done') === '1') return Promise.resolve();
-        var utm = getUtmPayload();
-        var sid = window._shubhmaySid || sessionStorage.getItem('shubhmay_sid');
-        if (!sid) return Promise.resolve();
-        return fetch('/api/track/lead', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            session_id: sid,
-            phone: payload.phone,
-            source_page: 'metal-finder',
-            landing_path: location.pathname + location.search,
-            referrer: document.referrer || null,
-            document_referrer: document.referrer || null,
-            user_agent: navigator.userAgent,
-            client_language: navigator.language,
-            utm_source: utm.utm_source,
-            utm_medium: utm.utm_medium,
-            utm_campaign: utm.utm_campaign
-          })
-        }).catch(function () {});
+      function saveMetalFinderLead() {
+        return Promise.resolve();
       }
 
       function showStep(n) {
@@ -2107,11 +2085,7 @@
           selectedRashi = key;
           emit('rashi_selected', { rashi: key, metal: r.metal });
           emit('cta_click', { cta_location: 'rashi_select', cta_label: displayName, step_index: 2 });
-          if (hasPhoneForMetalSkip()) {
-            showStep(3);
-          } else {
-            showPhoneGateForRashi();
-          }
+          showStep(3);
         });
         grid.appendChild(card);
       });
@@ -2178,16 +2152,11 @@
           return;
         }
         errEl.style.display = 'none';
-        try {
-          sessionStorage.setItem('shubhmay_metal_finder_phone', phone);
-        } catch (e) { }
         emit('metal_finder_phone_submit', {
-          phone: phone,
           rashi: selectedRashi,
           metal: selectedRashi && RASHI_METAL_MAP[selectedRashi] ? RASHI_METAL_MAP[selectedRashi].metal : '',
           whatsapp_opt_in: true
         });
-        saveMetalFinderLead({ phone: phone, rashi: selectedRashi, whatsapp_opt_in: true });
         resetStep2PhoneGate();
         showStep(3);
       });
@@ -2207,7 +2176,7 @@
           var rashi = selectedRashi || '';
           var metal = (selectedRashi && RASHI_METAL_MAP[selectedRashi]) ? RASHI_METAL_MAP[selectedRashi].metal : '';
           var rashiName = rashi ? getRashiName(rashi) : '';
-          emit('whatsapp_click', { phone: ph, rashi: rashi, metal: metal, rashi_display: rashiName, lead: false, skipped_modal: true, whatsapp_opt_in: true });
+          emit('whatsapp_click', { rashi: rashi, metal: metal, rashi_display: rashiName, lead: false, skipped_modal: true, whatsapp_opt_in: true });
           window.location.href = 'https://whatsapp.com/channel/0029VbCI7Yu5Ui2VV24kwC42';
           return;
         }
@@ -2242,7 +2211,7 @@
         var rashi = selectedRashi || '';
         var metal = (selectedRashi && RASHI_METAL_MAP[selectedRashi]) ? RASHI_METAL_MAP[selectedRashi].metal : '';
         var rashiName = rashi ? getRashiName(rashi) : '';
-        emit('whatsapp_click', { phone: phone, rashi: rashi, metal: metal, rashi_display: rashiName, lead: true, whatsapp_opt_in: true });
+        emit('whatsapp_click', { rashi: rashi, metal: metal, rashi_display: rashiName, lead: true, whatsapp_opt_in: true });
         errEl.style.display = 'none';
         document.getElementById('whatsappPhoneModal').classList.remove('visible');
         window.location.href = 'https://whatsapp.com/channel/0029VbCI7Yu5Ui2VV24kwC42';

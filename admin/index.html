@@ -144,7 +144,7 @@
 
         <span class="nav-section-label">People</span>
         <a class="nav-item" href="#/leads" data-panel="leads">
-          <span class="nav-icon">✉</span>Contacts
+          <span class="nav-icon">✉</span>Leads
         </a>
         <a class="nav-item" href="#/visitors" data-panel="visitors">
           <span class="nav-icon">◉</span>Site Visitors
@@ -307,7 +307,7 @@
               <div class="filter-tool-card-title">How they found us</div>
               <select class="orders-input orders-input--full" id="ordersFilterAcquisition" aria-label="Acquisition type">
                 <option value="">Any</option>
-                <option value="lead">From saved contact</option>
+                <option value="lead">From saved lead</option>
                 <option value="direct">Direct checkout</option>
               </select>
             </div>
@@ -403,15 +403,15 @@
           </div>
         </section>
 
-        <!-- ── CONTACTS (Leads) ───────────────────────────────── -->
+        <!-- ── LEADS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-leads" data-panel>
-          <p class="panel-intro">People who shared their email or phone number. Use "All records" to also include old anonymous-only entries.</p>
+          <p class="panel-intro">People who shared contact details (email or phone). This view only shows real leads.</p>
           <div class="primary-metrics-row" id="leadsPrimaryStrip" aria-live="polite"></div>
 
           <div class="filter-card">
             <div class="filter-card-head">
               <span class="filter-card-title">Date range</span>
-              <div class="filter-chips" role="group" aria-label="Contact date shortcuts">
+              <div class="filter-chips" role="group" aria-label="Lead date shortcuts">
                 <button type="button" class="filter-chip" data-date-panel="leads" data-date-preset="today">Today</button>
                 <button type="button" class="filter-chip" data-date-panel="leads" data-date-preset="yesterday">Yesterday</button>
                 <button type="button" class="filter-chip" data-date-panel="leads" data-date-preset="last3">Last 3d</button>
@@ -420,12 +420,12 @@
               </div>
             </div>
             <div class="admin-filters admin-filters--wrap" id="leadsFilters">
-              <input type="search" class="orders-input" id="leadsFilterSearch" placeholder="Search email, phone, name or visit ID" />
+              <input type="search" class="orders-input" id="leadsFilterSearch" placeholder="Search email, phone, name, session, lead id or lead code" />
               <input type="text" class="orders-input" id="leadsFilterUtmSource" placeholder="Traffic source (e.g. google)" />
               <input type="text" class="orders-input" id="leadsFilterUtmMedium" placeholder="Traffic medium (e.g. cpc)" />
               <input type="text" class="orders-input" id="leadsFilterUtmCampaign" placeholder="Campaign name contains…" />
               <input type="text" class="orders-input" id="leadsFilterLeadStatus" placeholder="Contact status" />
-              <select class="orders-input" id="leadsFilterContactsOnly" aria-label="Contact filter">
+              <select class="orders-input" id="leadsFilterContactsOnly" aria-label="Lead filter">
                 <option value="1" selected>Has email or phone</option>
                 <option value="0">All records (legacy)</option>
               </select>
@@ -460,13 +460,15 @@
               <thead>
                 <tr>
                   <th>Last seen</th>
-                  <th>Visit ID</th>
+                  <th>Lead code</th>
+                  <th>Session ID</th>
                   <th>Email</th>
                   <th>Name</th>
                   <th>Phone</th>
+                  <th>Source page</th>
                   <th>Traffic source</th>
                   <th>Campaign</th>
-                  <th>First page</th>
+                  <th>Landing page</th>
                   <th>Came from</th>
                   <th>Interest score</th>
                   <th>Interest level</th>
@@ -540,7 +542,7 @@
 
         <!-- ── SITE VISITORS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-visitors" data-panel>
-          <p class="panel-intro">Everyone who visited your site — anonymous and identified. A visitor becomes a Contact the moment they share their email or phone.</p>
+          <p class="panel-intro">Everyone who visited your site — anonymous and identified. A visitor becomes a lead the moment they share their email or phone.</p>
           <div class="primary-metrics-row" id="visitorsPrimaryStrip" aria-live="polite"></div>
 
           <div class="filter-card">
@@ -556,8 +558,8 @@
             <div class="admin-filters admin-filters--wrap" id="visitorsFilters">
               <input type="search" class="orders-input" id="visitorsFilterSearch" placeholder="Search visit ID, page, email or phone" />
               <select class="orders-input" id="visitorsFilterConverted" aria-label="Contact conversion">
-                <option value="">Converted to contact: any</option>
-                <option value="yes">Converted (gave contact info)</option>
+                <option value="">Converted to lead: any</option>
+                <option value="yes">Converted (shared contact details)</option>
                 <option value="no">Anonymous only</option>
               </select>
               <input type="datetime-local" class="orders-input" id="visitorsFilterDateFrom" title="Last seen from" />
@@ -576,7 +578,7 @@
                   <th>Visit ID</th>
                   <th>First page</th>
                   <th>Traffic source</th>
-                  <th>Became a contact?</th>
+                  <th>Became a lead?</th>
                   <th>Open</th>
                 </tr>
               </thead>

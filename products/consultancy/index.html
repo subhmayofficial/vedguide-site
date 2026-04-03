@@ -952,7 +952,7 @@
           <li class="pkg-li">Quick kundli insight &amp; focused remedy guidance</li>
         </ul>
       </div>
-      <div class="pkg-foot"><a href="/products/consultancy-checkout?plan=consult_15" class="btn-gold-outline">Select This Plan</a></div>
+      <div class="pkg-foot"><a href="/consultancy-checkout.html?plan=consult_15" class="btn-gold-outline">Select This Plan</a></div>
     </div>
     <div class="pkg feat-card">
       <div class="pkg-badge">✦ Complete Session ✦</div>
@@ -969,7 +969,7 @@
           <li class="pkg-li">Session recording included</li>
         </ul>
       </div>
-      <div class="pkg-foot"><a href="/products/consultancy-checkout?plan=consult_45" class="btn-gold-outline">Select This Plan</a></div>
+      <div class="pkg-foot"><a href="/consultancy-checkout.html?plan=consult_45" class="btn-gold-outline">Select This Plan</a></div>
     </div>
   </div>
 </section>
@@ -1105,6 +1105,18 @@
     if (e.key === 'Escape' && menu.classList.contains('is-open')) closeMenu();
   });
 })();
+</script>
+
+<script src="/js/shubhmay-track.js" defer></script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  if (window.ShubhmayTrack && typeof window.ShubhmayTrack.init === 'function') {
+    window.ShubhmayTrack.init({
+      sourcePage: 'products_consultancy',
+      meta: { page: 'products_consultancy', funnel: 'consultancy' },
+    });
+  }
+});
 </script>
 
 </body>

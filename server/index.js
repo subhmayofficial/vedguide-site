@@ -758,6 +758,9 @@ const URL_REWRITES = {
   '/metal-finder': '/free-metal-finder-tool.html',
   '/tools/metal': '/metal/index.html',
   '/kundli-preview': '/kundli-preview.html',
+  /** Product URLs used in nav/CTAs — map to real files under site root */
+  '/products/consultancy-checkout': '/consultancy-checkout.html',
+  '/products/kundli-checkout': '/lp/kundli-checkout/index.html',
 };
 
 if (serveStatic) {

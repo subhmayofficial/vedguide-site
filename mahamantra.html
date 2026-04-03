@@ -822,6 +822,21 @@
         if (window.ShubhmayTrack) ShubhmayTrack.track(et, pl || {}, {});
       }
 
+      function upsertMahamantraLead(name, phone) {
+        if (!window.ShubhmayTrack || typeof window.ShubhmayTrack.submitLead !== 'function') {
+          return Promise.resolve();
+        }
+        return window.ShubhmayTrack.submitLead({
+          name: name,
+          phone: phone,
+          conversion_form: 'mahamantra_unlock_form',
+          source_page: 'mahamantra',
+          landing_path: window.location.pathname + window.location.search,
+          referrer: document.referrer || '',
+          document_referrer: document.referrer || ''
+        });
+      }
+
       function setMsg(t, cls) {
         msgEl.textContent = t || "";
         msgEl.className = "msg" + (cls ? " " + cls : "");
@@ -838,7 +853,8 @@
         unlockBtn.disabled = true;
         unlockBtn.textContent = "Unlocking…";
 
-        track("ganpati_lead_submit", { name: name, phone: phone, source_page: "ganpatiji" });
+        upsertMahamantraLead(name, phone);
+        track("ganpati_lead_submit", { source_page: "mahamantra" });
 
         greetNameEl.textContent = "Jai Maa, " + name + " ji!";
         resultSection.style.display = "block";

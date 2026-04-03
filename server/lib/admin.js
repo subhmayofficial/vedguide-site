@@ -2,6 +2,47 @@ import { DateTime } from 'luxon';
 import { supabaseRequest, supabaseGetRange, supabaseCountRows, parseContentRangeTotal } from './supabase.js';
 import { strTrim } from './strings.js';
 
+/**
+ * First URL path in the same merged timeline as /api/admin/visitors/:id/timeline
+ * (visitor_events + lead_events when converted), earliest event with a non-empty path.
+ */
+async function firstSitePathFromVisitorTimeline(cfg, row) {
+  const visitorId = row?.id;
+  if (!visitorId) return null;
+  const leadId = row.converted_lead_id ? String(row.converted_lead_id) : null;
+  const veUrl =
+    `visitor_events?visitor_id=eq.${encodeURIComponent(String(visitorId))}` +
+    '&select=id,event_type,event_name,path,created_at&order=created_at.asc&limit=500';
+  const reqs = [supabaseRequest(cfg, 'GET', veUrl)];
+  if (leadId) {
+    reqs.push(
+      supabaseRequest(
+        cfg,
+        'GET',
+        `lead_events?lead_id=eq.${encodeURIComponent(leadId)}&select=id,event_type,event_name,stage,path,created_at&order=created_at.asc&limit=500`
+      )
+    );
+  }
+  const results = await Promise.all(reqs);
+  const merged = [];
+  for (let i = 0; i < results.length; i++) {
+    const r = results[i];
+    if (r.code >= 200 && r.code < 300) {
+      const evs = JSON.parse(r.body || '[]');
+      if (Array.isArray(evs)) {
+        const source = i === 0 ? 'visitor' : 'lead';
+        merged.push(...evs.map((ev) => ({ ...ev, _source: source })));
+      }
+    }
+  }
+  const deduped = dedupeMergedTimelineEvents(merged);
+  for (const ev of deduped) {
+    const p = strTrim(ev.path, 1000);
+    if (p) return p;
+  }
+  return null;
+}
+
 const ADMIN_TZ = 'Asia/Kolkata';
 
 export const ADMIN_ORDERS_SELECT =
@@ -173,6 +214,22 @@ function buildCustomersFilterQs(q) {
   return parts.length ? `&${parts.join('&')}` : '';
 }
 
+/** Normalize pasted lead UUID (with or without hyphens) for id=eq filter. */
+function normalizeLeadUuidSearch(raw) {
+  const t = String(raw ?? '')
+    .trim()
+    .replace(/\s+/g, '');
+  if (!t) return null;
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(t)) {
+    return t.toLowerCase();
+  }
+  const compact = t.replace(/-/g, '');
+  if (/^[0-9a-f]{32}$/i.test(compact)) {
+    return `${compact.slice(0, 8)}-${compact.slice(8, 12)}-${compact.slice(12, 16)}-${compact.slice(16, 20)}-${compact.slice(20, 32)}`.toLowerCase();
+  }
+  return null;
+}
+
 function buildLeadsFilterQs(q) {
   const parts = [];
   const s = (v) => String(v ?? '').trim();
@@ -188,8 +245,20 @@ function buildLeadsFilterQs(q) {
   if (['yes', '1', 'true'].includes(conv)) parts.push('converted_order_id=not.is.null');
   else if (['no', '0', 'false'].includes(conv)) parts.push('converted_order_id=is.null');
   if (s(q.search)) {
-    const x = encodeURIComponent(s(q.search));
-    parts.push(`or=(email.ilike.*${x}*,session_id.ilike.*${x}*,phone.ilike.*${x}*,name.ilike.*${x}*)`);
+    const raw = s(q.search);
+    const x = encodeURIComponent(raw);
+    const orParts = [
+      `email.ilike.*${x}*`,
+      `session_id.ilike.*${x}*`,
+      `phone.ilike.*${x}*`,
+      `name.ilike.*${x}*`,
+      `id_text.ilike.*${x}*`,
+    ];
+    const uuidEq = normalizeLeadUuidSearch(raw);
+    if (uuidEq) {
+      orParts.push(`id.eq.${encodeURIComponent(uuidEq)}`);
+    }
+    parts.push(`or=(${orParts.join(',')})`);
   }
   const it = s(q.intent_tier).toLowerCase();
   if (it === 'high' || it === 'medium' || it === 'low') {
@@ -625,9 +694,21 @@ export async function adminListVisitors(cfg, q) {
   const r = await supabaseGetRange(cfg, path, pg.range);
   if (r.code >= 200 && r.code < 300) {
     const rows = JSON.parse(r.body || '[]');
+    const list = Array.isArray(rows) ? rows : [];
+    const enriched = await Promise.all(
+      list.map(async (row) => {
+        try {
+          const firstPath = await firstSitePathFromVisitorTimeline(cfg, row);
+          if (firstPath) return { ...row, landing_path: firstPath };
+        } catch {
+          /* keep row.landing_path */
+        }
+        return row;
+      })
+    );
     return {
       ok: true,
-      rows: Array.isArray(rows) ? rows : [],
+      rows: enriched,
       total: parseContentRangeTotal(r.contentRange),
       page: pg.page,
       perPage: pg.perPage,

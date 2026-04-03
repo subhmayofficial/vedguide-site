@@ -16,7 +16,7 @@
     orders: 'Orders',
     customers: 'Customers',
     visitors: 'Site Visitors',
-    leads: 'Contacts',
+    leads: 'Leads',
     analytics: 'Page Traffic',
     abandoned: 'Left Without Paying',
     settings: 'Settings',
@@ -1709,7 +1709,7 @@
           },
           { label: 'Orders', value: j.orderCount != null ? j.orderCount : '—', sub: 'In this filter' },
           {
-            label: 'From saved contact',
+            label: 'From saved lead',
             value: j.ordersAttributedToLead != null ? j.ordersAttributedToLead : '—',
             sub: 'Linked to a lead',
           },
@@ -1736,7 +1736,7 @@
         leg.className = 'detail-muted';
         leg.style.cssText = 'grid-column:1/-1;margin:8px 0 0;font-size:12px;line-height:1.45;';
         leg.innerHTML =
-          '<strong>From saved contact</strong> = payment tied to someone who left email/phone before paying. ' +
+          '<strong>From saved lead</strong> = payment tied to someone who left email/phone before paying. ' +
           '<strong>Direct checkout</strong> = paid without that link (still a real customer).';
         strip.appendChild(leg);
       })
@@ -1777,7 +1777,7 @@
         rows.forEach(function (row, idx) {
           var cust = row.customers || {};
           var acq = row.lead_id
-            ? '<span class="badge badge--ok" title="Payment linked to a saved contact (lead).">From contact</span>'
+            ? '<span class="badge badge--ok" title="Payment linked to a saved lead.">From lead</span>'
             : '<span class="badge" title="Paid without a lead id on this order — direct checkout.">Direct</span>';
           var tr = document.createElement('tr');
           var st = String(row.order_status || 'new');
@@ -2201,13 +2201,17 @@
             '<td>' +
             fmtTs(row.last_seen_at) +
             '</td><td class="cell-mono cell-clip">' +
-            esc(code || row.session_id) +
+            esc(code || '—') +
+            '</td><td class="cell-mono cell-clip">' +
+            esc(row.session_id) +
             '</td><td>' +
             esc(row.email) +
             '</td><td>' +
             esc(row.name) +
             '</td><td class="cell-clip">' +
             esc(row.phone) +
+            '</td><td class="cell-clip">' +
+            esc(row.source_page) +
             '</td><td class="cell-clip">' +
             esc(utmSm) +
             '</td><td class="cell-clip">' +

@@ -14,6 +14,13 @@ function firstTouch(newVal, existing, max) {
   return e != null && e !== '' ? e : null;
 }
 
+/** Keep the first non-empty value (for landing page / source page on visitors). */
+function preserveFirst(existing, newVal, max) {
+  const e = strTrim(existing, max);
+  if (e != null && e !== '') return e;
+  return strTrim(newVal, max);
+}
+
 async function fetchLeadForMerge(cfg, leadId) {
   const u =
     `leads?id=eq.${encodeURIComponent(leadId)}` +
@@ -49,7 +56,7 @@ async function syncVisitorIntentFromLead(cfg, visitorId, score, tier) {
 async function fetchVisitorForMerge(cfg, visitorId) {
   const u =
     `visitors?id=eq.${encodeURIComponent(visitorId)}` +
-    '&select=email,name,phone,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term&limit=1';
+    '&select=email,name,phone,landing_path,source_page,referrer,document_referrer,utm_source,utm_medium,utm_campaign,utm_content,utm_term&limit=1';
   const r = await supabaseRequest(cfg, 'GET', u);
   if (r.code < 200 || r.code >= 300) return null;
   const rows = JSON.parse(r.body || '[]');
@@ -106,6 +113,9 @@ export async function handleTrackLead(cfg, body) {
 
   const existingVisitor = visitorId ? await fetchVisitorForMerge(cfg, visitorId) : null;
 
+  const currentLanding = strTrim(body.landing_path, 1000);
+  const currentSource = strTrim(body.source_page, 500);
+
   const vpatch = {
     email: emailNew || (existingVisitor?.email != null ? String(existingVisitor.email).toLowerCase() : null),
     name: nameNew || (existingVisitor ? strTrim(existingVisitor.name, 500) : null),
@@ -114,8 +124,12 @@ export async function handleTrackLead(cfg, body) {
       (existingVisitor?.phone != null
         ? strTrim(String(existingVisitor.phone).replace(/\s+/g, ''), 20)
         : null),
-    source_page: strTrim(body.source_page, 500),
-    landing_path: strTrim(body.landing_path, 1000),
+    source_page: visitorId
+      ? preserveFirst(existingVisitor?.source_page, body.source_page, 500)
+      : currentSource,
+    landing_path: visitorId
+      ? preserveFirst(existingVisitor?.landing_path, body.landing_path, 1000)
+      : currentLanding,
     referrer: firstTouch(body.referrer, existingVisitor?.referrer, 2000),
     document_referrer: firstTouch(body.document_referrer, existingVisitor?.document_referrer, 2000),
     utm_source: firstTouch(body.utm_source, existingVisitor?.utm_source, 128),
@@ -383,7 +397,7 @@ export async function handleTrackLead(cfg, body) {
         session_id: sessionId,
         event_type: 'journey',
         event_name: hasContact ? 'contact_shared' : 'session_touch',
-        path: vpatch.landing_path,
+        path: currentLanding,
         referrer: vpatch.referrer,
         document_referrer: vpatch.document_referrer,
         utm_source: vpatch.utm_source,
@@ -591,6 +605,7 @@ export async function handleTrackCheckoutEvent(cfg, body) {
   const leadUuid = rawLead && uuidOk(rawLead) ? rawLead : null;
 
   const rawVs = String(body.visitor_session_id ?? body.session_id ?? '').trim();
+  let leadSessionForEvent = rawVs || null;
   let visitorIdForCheckout = null;
   if (rawVs) {
     const vf = await supabaseRequest(cfg, 'GET', `visitors?select=id&session_id=eq.${encodeURIComponent(rawVs)}&limit=1`);
@@ -599,9 +614,19 @@ export async function handleTrackCheckoutEvent(cfg, body) {
       if (rows[0]?.id) visitorIdForCheckout = String(rows[0].id);
     }
   }
+  if (!leadSessionForEvent && leadUuid) {
+    const lr = await supabaseRequest(
+      cfg,
+      'GET',
+      `leads?id=eq.${encodeURIComponent(leadUuid)}&select=session_id&limit=1`
+    );
+    if (lr.code >= 200 && lr.code < 300) {
+      const rows = JSON.parse(lr.body || '[]');
+      if (rows[0]?.session_id) leadSessionForEvent = String(rows[0].session_id);
+    }
+  }
 
   const patch = {
-    lead_id: leadUuid,
     email: body.email != null ? String(body.email).trim().toLowerCase() : null,
     name: strTrim(body.name, 500),
     phone: body.phone != null ? strTrim(String(body.phone).replace(/\s+/g, ''), 20) : null,
@@ -622,6 +647,7 @@ export async function handleTrackCheckoutEvent(cfg, body) {
     landing_path: strTrim(body.landing_path, 1000),
     last_event_at: now,
   };
+  if (leadUuid) patch.lead_id = leadUuid;
 
   if (stage === 'dismissed' || stage === 'payment_dismissed') {
     patch.abandoned_at = now;
@@ -681,15 +707,16 @@ export async function handleTrackCheckoutEvent(cfg, body) {
     razorpay_order_id: patch.razorpay_order_id,
     amount_paise: patch.amount_paise,
     currency: patch.currency,
+    checkout_session_id: checkoutSessionId,
   };
-  if (leadUuid) {
+  if (leadUuid && leadSessionForEvent) {
     await supabaseRequest(
       cfg,
       'POST',
       'lead_events',
       JSON.stringify({
         lead_id: leadUuid,
-        session_id: checkoutSessionId,
+        session_id: leadSessionForEvent,
         event_type: 'checkout',
         event_name: stage,
         stage,

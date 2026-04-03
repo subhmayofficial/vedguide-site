@@ -4,15 +4,44 @@
  */
 (function (global) {
   var STORAGE_SID = 'shubhmay_sid';
+  var STORAGE_SID_LEGACY = 'sm_site_session';
   var STORAGE_TS = 'shubhmay_session_start_ts';
 
+  function storageGet(key, store) {
+    try {
+      return store.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  }
+  function storageSet(key, val, store) {
+    try {
+      store.setItem(key, val);
+    } catch (e) {}
+  }
+
+  /**
+   * One id per browser profile (localStorage) so all tabs share the same visitor row.
+   * sessionStorage alone created duplicate visitors when opening links in new tabs.
+   */
   function getOrCreateSid() {
-    var sid = sessionStorage.getItem(STORAGE_SID);
+    var sid =
+      storageGet(STORAGE_SID, global.localStorage) ||
+      storageGet(STORAGE_SID, global.sessionStorage);
+    if (!sid) {
+      var legacy =
+        storageGet(STORAGE_SID_LEGACY, global.sessionStorage) ||
+        storageGet(STORAGE_SID_LEGACY, global.localStorage);
+      if (legacy) sid = legacy;
+    }
     if (!sid) {
       sid = 's_' + Date.now() + '_' + Math.random().toString(36).slice(2, 11);
-      sessionStorage.setItem(STORAGE_SID, sid);
-      sessionStorage.setItem(STORAGE_TS, String(Date.now()));
+      storageSet(STORAGE_TS, String(Date.now()), global.sessionStorage);
     }
+    storageSet(STORAGE_SID, sid, global.localStorage);
+    storageSet(STORAGE_SID, sid, global.sessionStorage);
+    storageSet(STORAGE_SID_LEGACY, sid, global.sessionStorage);
+    storageSet(STORAGE_SID_LEGACY, sid, global.localStorage);
     global._shubhmaySid = sid;
     return sid;
   }
