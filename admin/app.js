@@ -2951,7 +2951,7 @@
   }
 
   (function wireSettingsAndHealth() {
-    var GTM_KEY = 'vedguide_admin_gtm_id';
+    var GTM_KEY = 'shubhmay_admin_gtm_id';
     var inp = document.getElementById('gtmIdInput');
     var saveBtn = document.getElementById('gtmSaveBtn');
     var checkBtn = document.getElementById('gtmCheckBtn');
