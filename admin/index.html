@@ -13,17 +13,93 @@
 </head>
 <body>
 
-  <!-- ── Password gate (shown before admin) ── -->
+  <!-- ── Password gate (server session — no password in page source) ── -->
   <div id="passwordGate" class="gate-wrap">
     <div class="gate-stars" id="gateStars"></div>
-    <div class="gate-box">
+    <div class="gate-box" id="gateBox">
       <div class="gate-logo">✦</div>
       <div class="gate-brand">VedGuide Admin</div>
-      <p class="gate-hint">Enter your access password to continue</p>
-      <div class="gate-input-row">
-        <input type="password" id="gateInput" class="gate-input" placeholder="Password" autocomplete="off" />
-        <button type="button" id="gateBtn" class="gate-btn">Enter →</button>
+
+      <div id="gateLoginBox">
+        <p class="gate-hint">Sign in with your admin password</p>
+        <div class="gate-input-row">
+          <input type="password" id="gateInput" class="gate-input" placeholder="Password" autocomplete="current-password" />
+          <button type="button" id="gateBtn" class="gate-btn">Enter →</button>
+        </div>
       </div>
+
+      <div id="gateBootstrapIntro" class="gate-bootstrap-intro" hidden>
+        <p class="gate-hint gate-hint--tight">This server has not been set up yet.</p>
+        <p class="gate-intro-copy">
+          You’ll create a <strong>private admin password</strong> and connect <strong>Supabase</strong> (required). Razorpay and other keys can be filled here or later under <strong>Settings</strong>.
+        </p>
+        <button type="button" id="gateBootstrapRevealBtn" class="gate-btn gate-btn--block">Continue to setup</button>
+        <p class="gate-subhint">The full form opens on the next step so this page stays clean on large screens.</p>
+      </div>
+
+      <div id="gateBootstrapBox" class="gate-bootstrap-box" hidden>
+        <p class="gate-hint gate-hint--left">One-time setup — strong password (12+ characters) and keys below.</p>
+        <div class="gate-bootstrap-scroll">
+          <div class="gate-bootstrap-grid">
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapPassword">Admin password (12+)</label>
+              <input type="password" id="bootstrapPassword" class="gate-input gate-input--full" autocomplete="new-password" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapPassword2">Confirm password</label>
+              <input type="password" id="bootstrapPassword2" class="gate-input gate-input--full" autocomplete="new-password" />
+            </div>
+            <div class="gate-bootstrap-row gate-bootstrap-row--section">
+              <span class="gate-section-label">Supabase (required)</span>
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapSupabaseUrl">Project URL</label>
+              <input type="url" id="bootstrapSupabaseUrl" class="gate-input gate-input--full" placeholder="https://xxx.supabase.co" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapServiceRoleKey">Service role key</label>
+              <input type="password" id="bootstrapServiceRoleKey" class="gate-input gate-input--full" autocomplete="off" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapAnonKey">Anon key</label>
+              <input type="password" id="bootstrapAnonKey" class="gate-input gate-input--full" autocomplete="off" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapSchema">Schema</label>
+              <input type="text" id="bootstrapSchema" class="gate-input gate-input--full" value="v2" />
+            </div>
+            <div class="gate-bootstrap-row gate-bootstrap-row--section">
+              <span class="gate-section-label">Razorpay &amp; product (optional here)</span>
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapRazorpayKeyId">Key id</label>
+              <input type="text" id="bootstrapRazorpayKeyId" class="gate-input gate-input--full" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapRazorpayKeySecret">Key secret</label>
+              <input type="password" id="bootstrapRazorpayKeySecret" class="gate-input gate-input--full" autocomplete="off" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapRazorpayWebhookSecret">Webhook secret</label>
+              <input type="password" id="bootstrapRazorpayWebhookSecret" class="gate-input gate-input--full" autocomplete="off" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapKundliAmount">Kundli (paise)</label>
+              <input type="number" id="bootstrapKundliAmount" class="gate-input gate-input--full" value="49900" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapCurrency">Currency</label>
+              <input type="text" id="bootstrapCurrency" class="gate-input gate-input--full" value="INR" />
+            </div>
+            <div class="gate-bootstrap-row">
+              <label class="gate-label" for="bootstrapGoogleMapsKey">Google Maps key (opt.)</label>
+              <input type="password" id="bootstrapGoogleMapsKey" class="gate-input gate-input--full" autocomplete="off" />
+            </div>
+          </div>
+        </div>
+        <button type="button" id="gateBootstrapBtn" class="gate-btn gate-btn--block gate-btn--submit">Save &amp; enter admin</button>
+      </div>
+
       <p class="gate-error" id="gateError"></p>
     </div>
   </div>
@@ -112,6 +188,12 @@
         <!-- ── DASHBOARD ───────────────────────────────── -->
         <section class="panel" id="panel-dashboard" data-panel>
           <p class="panel-intro">Your business at a glance. Pick a date range to load revenue and lead numbers.</p>
+          <div class="dash-config-banner hidden" id="dashConfigBanner" role="status" aria-live="polite">
+            <div class="dash-config-banner-title">Configuration</div>
+            <p class="dash-config-banner-lead" id="dashConfigBannerLead"></p>
+            <ul class="dash-config-banner-list" id="dashConfigBannerList"></ul>
+            <a class="btn btn--small dash-config-banner-cta" href="#/settings">Open settings</a>
+          </div>
           <div class="primary-metrics-row" id="dashPrimaryRow" aria-live="polite">
             <p class="detail-muted" style="grid-column:1/-1;margin:0;">Connect your admin account and pick a date range to see revenue &amp; conversions.</p>
           </div>
@@ -565,35 +647,60 @@
 
         <!-- ── SETTINGS ───────────────────────────────── -->
         <section class="panel hidden" id="panel-settings" data-panel>
-          <p class="panel-intro">Connect your admin account to unlock all data. Settings are saved in this browser only.</p>
+          <p class="panel-intro settings-panel-intro">Keys are encrypted on the server (<code>server/data/</code>). Use <strong>Connection health</strong> below to verify live APIs; open <strong>Edit keys</strong> only when you need to change something.</p>
 
           <div class="admin-auth-bar" id="adminAuthBar">
-            <div class="admin-auth-inner">
-              <label class="admin-auth-label" for="adminSecretInput">Admin password</label>
-              <input
-                type="password"
-                id="adminSecretInput"
-                class="orders-input admin-secret-field"
-                placeholder="Same as ADMIN_SECRET in your server .env"
-                autocomplete="off"
-                aria-label="Admin secret"
-              />
-              <button type="button" class="btn" id="adminConnectBtn">Connect</button>
-              <button type="button" class="btn btn--ghost hidden" id="adminDisconnectBtn" aria-label="Sign out admin">
-                Disconnect
-              </button>
-              <span class="admin-auth-hint">
-                Saved in this browser after a successful connect. Click Disconnect to sign out and clear it.
-              </span>
+            <div class="admin-auth-inner admin-auth-inner--responsive">
+              <span class="admin-auth-hint admin-auth-hint--grow">Signed in with your admin password (secure session).</span>
+              <button type="button" class="btn btn--ghost" id="adminDisconnectBtn" aria-label="Sign out admin">Sign out</button>
             </div>
           </div>
 
-          <div class="card wide settings-card" style="margin-bottom:16px;">
-            <div class="card-label">Server environment</div>
-            <p class="card-hint" style="margin-bottom:8px;">Set these in your <code>.env</code> file on the server:</p>
-            <p class="settings-note"><code>SUPABASE_URL</code> · <code>SUPABASE_SERVICE_ROLE_KEY</code> · <code>RAZORPAY_KEY_ID</code> · <code>RAZORPAY_KEY_SECRET</code> · <code>ADMIN_SECRET</code></p>
-            <p class="settings-note" style="margin-top:10px;color:var(--muted);">Access is gated by <code>ADMIN_SECRET</code>. No OAuth needed — just keep this password private.</p>
+          <div class="card wide settings-card settings-connections-card">
+            <div class="card-label">Connection health</div>
+            <p class="card-hint">Configured = value is saved. <strong>Test</strong> calls each provider (read-only where possible).</p>
+            <div class="conn-health-toolbar">
+              <button type="button" class="btn btn--small" id="connTestAllBtn">Test all connections</button>
+              <span class="conn-health-meta" id="connHealthMeta" aria-live="polite"></span>
+            </div>
+            <div class="conn-health-grid" id="connHealthGrid"></div>
+            <p class="settings-note conn-test-detail" id="connTestDetail" aria-live="polite"></p>
           </div>
+
+          <details class="settings-credentials-details" id="settingsCredentialsDetails">
+            <summary class="settings-credentials-summary">Edit Supabase, Razorpay &amp; optional keys</summary>
+            <div class="settings-credentials-body">
+              <p class="card-hint">Saved to <code>runtime-settings.enc.json</code>. Leave secret fields blank to keep the current value.</p>
+              <div class="settings-form-grid settings-form-grid--credentials">
+                <label class="gate-label" for="settingsSupabaseUrl">Supabase URL</label>
+                <input type="url" id="settingsSupabaseUrl" class="orders-input orders-input--full" placeholder="https://….supabase.co" />
+                <label class="gate-label" for="settingsServiceRoleKey">Service role key</label>
+                <input type="password" id="settingsServiceRoleKey" class="orders-input orders-input--full" placeholder="••••••••" autocomplete="off" />
+                <label class="gate-label" for="settingsAnonKey">Anon key</label>
+                <input type="password" id="settingsAnonKey" class="orders-input orders-input--full" placeholder="••••••••" autocomplete="off" />
+                <label class="gate-label" for="settingsSchema">Schema</label>
+                <input type="text" id="settingsSchema" class="orders-input orders-input--full" placeholder="v2" />
+                <label class="gate-label" for="settingsRazorpayKeyId">Razorpay key id</label>
+                <input type="text" id="settingsRazorpayKeyId" class="orders-input orders-input--full" />
+                <label class="gate-label" for="settingsRazorpayKeySecret">Razorpay key secret</label>
+                <input type="password" id="settingsRazorpayKeySecret" class="orders-input orders-input--full" autocomplete="off" />
+                <label class="gate-label" for="settingsRazorpayWebhookSecret">Razorpay webhook secret</label>
+                <input type="password" id="settingsRazorpayWebhookSecret" class="orders-input orders-input--full" autocomplete="off" />
+                <label class="gate-label" for="settingsKundliAmount">Kundli amount (paise)</label>
+                <input type="number" id="settingsKundliAmount" class="orders-input orders-input--full" />
+                <label class="gate-label" for="settingsCurrency">Currency</label>
+                <input type="text" id="settingsCurrency" class="orders-input orders-input--full" placeholder="INR" />
+                <label class="gate-label" for="settingsGoogleMapsKey">Google Maps browser key (optional)</label>
+                <input type="password" id="settingsGoogleMapsKey" class="orders-input orders-input--full" autocomplete="off" />
+                <label class="gate-label" for="settingsAdminSecret">Legacy API header secret (optional)</label>
+                <input type="password" id="settingsAdminSecret" class="orders-input orders-input--full" placeholder="X-Admin-Secret only" autocomplete="off" />
+              </div>
+              <div class="settings-save-row">
+                <button type="button" class="btn" id="settingsSaveRuntimeBtn">Save connection settings</button>
+                <p class="settings-note" id="settingsSaveMsg"></p>
+              </div>
+            </div>
+          </details>
 
           <div class="card wide settings-card" style="margin-bottom:16px;">
             <div class="card-label">Google Tag Manager</div>
@@ -631,87 +738,5 @@
   </div>
 
   <script src="app.js" defer></script>
-  <script>
-  /* Password gate — runs before app.js defer */
-  (function () {
-    var SESSION_KEY = 'vg_gate_ok';
-    var PASS = 'Sameer1122';
-    var gate = document.getElementById('passwordGate');
-    var welcome = document.getElementById('welcomeOverlay');
-    var mainApp = document.getElementById('mainApp');
-    var sidebarOverlay = document.getElementById('sidebarOverlay');
-    var copyToast = document.getElementById('copyToast');
-
-    function passed() { try { return sessionStorage.getItem(SESSION_KEY) === '1'; } catch(e) { return false; } }
-    function setPass() { try { sessionStorage.setItem(SESSION_KEY, '1'); } catch(e) {} }
-
-    function showApp() { mainApp.style.display = 'flex'; sidebarOverlay.style.display = ''; copyToast.style.display = ''; }
-
-    function spawnStars(container, n) {
-      for (var i = 0; i < n; i++) {
-        var s = document.createElement('span');
-        s.className = 'star-particle';
-        s.style.cssText = 'left:' + Math.random()*100 + '%;top:' + Math.random()*100 + '%;animation-delay:' + (Math.random()*3) + 's;animation-duration:' + (2+Math.random()*3) + 's;';
-        container.appendChild(s);
-      }
-    }
-
-    if (passed()) {
-      gate.style.display = 'none';
-      showApp();
-      return;
-    }
-
-    /* Build gate stars */
-    spawnStars(document.getElementById('gateStars'), 40);
-
-    var input = document.getElementById('gateInput');
-    var btn = document.getElementById('gateBtn');
-    var errEl = document.getElementById('gateError');
-
-    function attempt() {
-      if (input.value === PASS) {
-        setPass();
-        gate.classList.add('gate-exit');
-        setTimeout(function () {
-          gate.style.display = 'none';
-          gate.classList.remove('gate-exit');
-          showWelcome();
-        }, 450);
-      } else {
-        errEl.textContent = 'Wrong password — try again';
-        input.classList.add('gate-shake');
-        input.value = '';
-        input.focus();
-        setTimeout(function () { input.classList.remove('gate-shake'); errEl.textContent = ''; }, 700);
-      }
-    }
-
-    btn.addEventListener('click', attempt);
-    input.addEventListener('keydown', function (e) { if (e.key === 'Enter') attempt(); });
-    input.focus();
-
-    function showWelcome() {
-      spawnStars(document.getElementById('welcomeStars'), 60);
-      welcome.style.display = 'flex';
-      var fill = document.getElementById('welcomeBarFill');
-      /* Animate bar */
-      var pct = 0;
-      var interval = setInterval(function () {
-        pct += 2;
-        if (fill) fill.style.width = Math.min(pct, 100) + '%';
-        if (pct >= 100) {
-          clearInterval(interval);
-          welcome.classList.add('welcome-exit');
-          setTimeout(function () {
-            welcome.style.display = 'none';
-            welcome.classList.remove('welcome-exit');
-            showApp();
-          }, 500);
-        }
-      }, 30);
-    }
-  })();
-  </script>
 </body>
 </html>

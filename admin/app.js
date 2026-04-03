@@ -1,4 +1,15 @@
 (function () {
+  (function patchFetchCredentials() {
+    var o = window.fetch;
+    window.fetch = function (url, opts) {
+      opts = opts || {};
+      if (typeof url === 'string' && url.indexOf('/api/') === 0 && opts.credentials === undefined) {
+        opts.credentials = 'include';
+      }
+      return o.call(this, url, opts);
+    };
+  })();
+
   var STORAGE_KEY = 'shubhmay_admin_secret';
   var titles = {
     dashboard: 'Dashboard',
@@ -15,6 +26,7 @@
   var adminConnected = false;
   var lastVerifiedSecret = '';
   var serverAdminApiEnabled = true;
+  var gateResolved = false;
 
   function migrateStorage() {
     try {
@@ -56,11 +68,14 @@
   }
 
   function canAuth() {
-    return adminConnected && lastVerifiedSecret && getSecret() === lastVerifiedSecret;
+    return adminConnected;
   }
 
   function authHeaders() {
-    return { 'X-Admin-Secret': getSecret() };
+    var h = {};
+    var s = getSecret();
+    if (s) h['X-Admin-Secret'] = s;
+    return h;
   }
 
   function updateDisconnectBtn() {
@@ -83,7 +98,7 @@
     if (canAuth()) {
       el.textContent = 'Admin: connected';
       el.classList.add('pill--ok');
-    } else if (getSecret()) {
+    } else if (getSecret() && secretInput) {
       el.textContent = 'Admin: not connected — click Connect';
       el.classList.add('pill--bad');
     } else {
@@ -92,7 +107,8 @@
   }
 
   function verifyAdmin(secret) {
-    return fetch('/api/admin/ping', { headers: { 'X-Admin-Secret': secret } }).then(function (r) {
+    var hdrs = secret ? { 'X-Admin-Secret': secret } : {};
+    return fetch('/api/admin/ping', { headers: hdrs, credentials: 'include' }).then(function (r) {
       if (r.status === 503) return { ok: false, reason: 'server' };
       if (r.ok) return { ok: true };
       return { ok: false, reason: 'bad' };
@@ -101,9 +117,9 @@
 
   function applyVerifyResult(res, secret) {
     if (res.ok) {
-      lastVerifiedSecret = secret;
+      lastVerifiedSecret = secret || 'session';
       adminConnected = true;
-      saveStoredSecret(secret);
+      if (secret) saveStoredSecret(secret);
     } else {
       adminConnected = false;
       lastVerifiedSecret = '';
@@ -158,12 +174,12 @@
     if (id !== currentPanel) showPanel(id, true);
   });
 
-  (function initAdminRoute() {
+  function runInitialRoute() {
     if (!location.hash || location.hash === '#') {
       history.replaceState(null, '', location.pathname + location.search + '#/dashboard');
     }
     showPanel(readRouteHash(), true);
-  })();
+  }
 
   if (secretInput) {
     secretInput.addEventListener('input', function () {
@@ -195,18 +211,26 @@
   }
 
   function handleDisconnect() {
-    saveStoredSecret('');
-    adminConnected = false;
-    lastVerifiedSecret = '';
-    if (secretInput) secretInput.value = '';
-    var dashCard = document.getElementById('dashSummary');
-    if (dashCard) dashCard.hidden = true;
-    var dashApi = document.getElementById('dashApiSummary');
-    if (dashApi) dashApi.hidden = true;
-    var snapCard = document.getElementById('dashSnapshotsCard');
-    if (snapCard) snapCard.hidden = true;
-    updateAdminPill();
-    updateDisconnectBtn();
+    fetch('/api/admin/auth/logout', { method: 'POST', credentials: 'include' }).finally(function () {
+      saveStoredSecret('');
+      adminConnected = false;
+      lastVerifiedSecret = '';
+      if (secretInput) secretInput.value = '';
+      var dashCard = document.getElementById('dashSummary');
+      if (dashCard) dashCard.hidden = true;
+      var dashApi = document.getElementById('dashApiSummary');
+      if (dashApi) dashApi.hidden = true;
+      var snapCard = document.getElementById('dashSnapshotsCard');
+      if (snapCard) snapCard.hidden = true;
+      updateAdminPill();
+      updateDisconnectBtn();
+      var gate = document.getElementById('passwordGate');
+      var mainApp = document.getElementById('mainApp');
+      if (mainApp) mainApp.style.display = 'none';
+      if (gate) gate.style.display = '';
+      gateResolved = false;
+      runGateFlow();
+    });
   }
 
   if (connectBtn) connectBtn.addEventListener('click', handleConnect);
@@ -2328,6 +2352,56 @@
       });
   }
 
+  function loadDashboardConfigBanner() {
+    var banner = document.getElementById('dashConfigBanner');
+    var list = document.getElementById('dashConfigBannerList');
+    var lead = document.getElementById('dashConfigBannerLead');
+    if (!banner) return;
+    if (!canAuth()) {
+      banner.classList.add('hidden');
+      return;
+    }
+    fetch('/api/admin/connections', { headers: authHeaders(), credentials: 'include' })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          banner.classList.add('hidden');
+          return;
+        }
+        var critical = j.missingCritical || [];
+        var rec = j.missingRecommended || [];
+        if (critical.length === 0 && rec.length === 0) {
+          banner.classList.add('hidden');
+          return;
+        }
+        banner.classList.remove('hidden');
+        if (lead) {
+          lead.textContent =
+            critical.length > 0
+              ? 'Required keys are missing — payments, webhooks, or the database may not work until you fix this.'
+              : 'Some optional keys are missing — a few features may be limited.';
+        }
+        if (!list) return;
+        list.innerHTML = '';
+        critical.forEach(function (m) {
+          var li = document.createElement('li');
+          li.innerHTML =
+            '<span class="dash-config-severity dash-config-severity--critical">Required</span> ' + esc(m.label);
+          list.appendChild(li);
+        });
+        rec.forEach(function (m) {
+          var li = document.createElement('li');
+          li.innerHTML = '<span class="dash-config-severity">Recommended</span> ' + esc(m.label);
+          list.appendChild(li);
+        });
+      })
+      .catch(function () {
+        banner.classList.add('hidden');
+      });
+  }
+
   function loadDashboardSummary() {
     var grid = document.getElementById('dashSummaryGrid');
     var apiCard = document.getElementById('dashApiSummary');
@@ -2345,9 +2419,12 @@
       if (apiCard) apiCard.hidden = true;
       var snapCard0 = document.getElementById('dashSnapshotsCard');
       if (snapCard0) snapCard0.hidden = true;
+      var b0 = document.getElementById('dashConfigBanner');
+      if (b0) b0.classList.add('hidden');
       return;
     }
     if (dashCard) dashCard.hidden = false;
+    loadDashboardConfigBanner();
     if (apiCard) apiCard.hidden = true;
     updateDashChipActive();
     if (analyticsGrid) {
@@ -2490,6 +2567,9 @@
         break;
       case 'dashboard':
         loadDashboardSummary();
+        break;
+      case 'settings':
+        loadRuntimeSettingsForm();
         break;
       default:
         break;
@@ -2859,11 +2939,6 @@
     });
 
   function initAdminAuth() {
-    if (!getSecret()) {
-      updateAdminPill();
-      updateDisconnectBtn();
-      return;
-    }
     var pill = document.getElementById('adminConnPill');
     if (pill) pill.dataset.checking = '1';
     updateAdminPill();
@@ -2916,6 +2991,283 @@
           });
       });
     }
+
+    function loadRuntimeSettingsForm() {
+      if (!canAuth()) return;
+      var msg = document.getElementById('settingsSaveMsg');
+      if (msg) msg.textContent = '';
+      fetch('/api/admin/settings', { headers: authHeaders(), credentials: 'include' })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (j) {
+          if (!j || !j.ok) return;
+          function setVal(id, v) {
+            var el = document.getElementById(id);
+            if (el) el.value = v != null && v !== '' ? String(v) : '';
+          }
+          setVal('settingsSupabaseUrl', j.supabaseUrl);
+          setVal('settingsSchema', j.schema);
+          setVal('settingsRazorpayKeyId', j.razorpayKeyId);
+          setVal('settingsKundliAmount', j.kundliAmountPaise);
+          setVal('settingsCurrency', j.currency);
+          [
+            'settingsServiceRoleKey',
+            'settingsAnonKey',
+            'settingsRazorpayKeySecret',
+            'settingsRazorpayWebhookSecret',
+            'settingsGoogleMapsKey',
+            'settingsAdminSecret',
+          ].forEach(function (id) {
+            var inp = document.getElementById(id);
+            if (inp) inp.value = '';
+          });
+          function setPh(id, isSet) {
+            var inp = document.getElementById(id);
+            if (inp)
+              inp.placeholder = isSet
+                ? '•••••••• (saved — leave blank to keep)'
+                : 'Optional — leave blank if not set';
+          }
+          setPh('settingsServiceRoleKey', j.serviceRoleKeySet);
+          setPh('settingsAnonKey', j.anonKeySet);
+          setPh('settingsRazorpayKeySecret', j.razorpayKeySecretSet);
+          setPh('settingsRazorpayWebhookSecret', j.razorpayWebhookSecretSet);
+          setPh('settingsGoogleMapsKey', j.googleMapsBrowserKeySet);
+          setPh('settingsAdminSecret', j.legacyAdminSecretSet);
+        })
+        .catch(function () {})
+        .finally(function () {
+          refreshConnectionsPanel();
+        });
+    }
+
+    var saveRt = document.getElementById('settingsSaveRuntimeBtn');
+    if (saveRt) {
+      saveRt.addEventListener('click', function () {
+        if (!canAuth()) return;
+        var msg = document.getElementById('settingsSaveMsg');
+        var body = {};
+        function trimVal(id) {
+          var el = document.getElementById(id);
+          return el && el.value ? el.value.trim() : '';
+        }
+        var u = trimVal('settingsSupabaseUrl');
+        if (u) body.supabaseUrl = u;
+        var sr = trimVal('settingsServiceRoleKey');
+        if (sr) body.serviceRoleKey = sr;
+        var ak = trimVal('settingsAnonKey');
+        if (ak) body.anonKey = ak;
+        var sc = trimVal('settingsSchema');
+        if (sc) body.schema = sc;
+        var rk = trimVal('settingsRazorpayKeyId');
+        if (rk) body.razorpayKeyId = rk;
+        var rs = trimVal('settingsRazorpayKeySecret');
+        if (rs) body.razorpayKeySecret = rs;
+        var rw = trimVal('settingsRazorpayWebhookSecret');
+        if (rw) body.razorpayWebhookSecret = rw;
+        var kaEl = document.getElementById('settingsKundliAmount');
+        if (kaEl && kaEl.value !== '' && kaEl.value != null) {
+          var n = parseInt(String(kaEl.value).trim(), 10);
+          if (!Number.isNaN(n)) body.kundliAmountPaise = n;
+        }
+        var cur = trimVal('settingsCurrency');
+        if (cur) body.currency = cur;
+        var gm = trimVal('settingsGoogleMapsKey');
+        if (gm) body.googleMapsBrowserKey = gm;
+        var leg = trimVal('settingsAdminSecret');
+        if (leg) body.adminSecret = leg;
+        fetch('/api/admin/settings', {
+          method: 'POST',
+          headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+          body: JSON.stringify(body),
+          credentials: 'include',
+        })
+          .then(function (r) {
+            return r.json().then(function (j) {
+              return { ok: r.ok, j: j };
+            });
+          })
+          .then(function (x) {
+            if (msg) {
+              msg.textContent =
+                x.ok && x.j && x.j.ok
+                  ? 'Saved. New values apply immediately.'
+                  : (x.j && x.j.error) || 'Save failed';
+            }
+            if (x.ok && x.j && x.j.ok) {
+              loadRuntimeSettingsForm();
+              loadDashboardConfigBanner();
+            }
+          })
+          .catch(function () {
+            if (msg) msg.textContent = 'Network error';
+          });
+      });
+    }
+
+    var lastLiveConnResults = null;
+
+    function liveSummaryLines(live) {
+      if (!live) return '';
+      if (live.error) return String(live.error);
+      var lines = [];
+      function one(label, b) {
+        if (!b) return;
+        var d = b.detail ? String(b.detail) : b.ok ? 'OK' : 'Fail';
+        lines.push(label + ': ' + d);
+      }
+      one('Supabase (service role)', live.supabaseService);
+      one('Supabase (anon)', live.supabaseAnon);
+      one('Razorpay API', live.razorpay);
+      one('Google Maps', live.googleMaps);
+      one('Webhook secret', live.razorpayWebhook);
+      return lines.join('\n');
+    }
+
+    function formatLiveShort(b) {
+      if (!b) return '—';
+      if (b.skipped) return 'Skipped';
+      if (b.ok && b.warning) return 'OK (note)';
+      if (b.ok) return 'OK';
+      return 'Fail';
+    }
+
+    function renderConnHealth(snapshot, live) {
+      var mount = document.getElementById('connHealthGrid');
+      var meta = document.getElementById('connHealthMeta');
+      if (!mount || !snapshot || !snapshot.ok) return;
+      mount.innerHTML = '';
+      var cfg = snapshot.configured || {};
+      var sum = document.createElement('p');
+      sum.className = 'conn-health-summary';
+      sum.textContent = snapshot.readyForOrders
+        ? 'Schema "' + String(snapshot.schema || 'v2') + '": database + Razorpay API keys present.'
+        : 'Schema "' + String(snapshot.schema || 'v2') + '": add missing keys for full checkout pipeline.';
+      mount.appendChild(sum);
+      function addRow(label, conf, liveKey, testWhich) {
+        var wrap = document.createElement('div');
+        wrap.className = 'conn-health-row';
+        var n = document.createElement('div');
+        n.className = 'conn-health-name';
+        n.textContent = label;
+        var badge = document.createElement('span');
+        badge.className = 'badge ' + (conf ? 'badge--ok' : 'badge--bad');
+        badge.textContent = conf ? 'Saved' : 'Missing';
+        var liveEl = document.createElement('div');
+        liveEl.className = 'conn-health-live';
+        var L = live && live[liveKey];
+        liveEl.textContent = formatLiveShort(L);
+        if (L && L.detail) liveEl.title = L.detail;
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'btn btn--small btn--ghost';
+        btn.setAttribute('data-conn-test', testWhich);
+        btn.textContent = 'Test';
+        wrap.appendChild(n);
+        wrap.appendChild(badge);
+        wrap.appendChild(liveEl);
+        wrap.appendChild(btn);
+        mount.appendChild(wrap);
+      }
+      addRow(
+        'Supabase (service role → PostgREST)',
+        Boolean(cfg.supabaseUrl && cfg.serviceRoleKey),
+        'supabaseService',
+        'supabaseService'
+      );
+      addRow(
+        'Supabase (anon key — browser / RLS)',
+        Boolean(cfg.supabaseUrl && cfg.anonKey),
+        'supabaseAnon',
+        'supabaseAnon'
+      );
+      addRow(
+        'Razorpay REST API',
+        Boolean(cfg.razorpayKeyId && cfg.razorpayKeySecret),
+        'razorpay',
+        'razorpay'
+      );
+      addRow('Razorpay webhook secret', Boolean(cfg.razorpayWebhookSecret), 'razorpayWebhook', 'webhook');
+      addRow('Google Maps (Geocoding check)', Boolean(cfg.googleMapsBrowserKey), 'googleMaps', 'googleMaps');
+      if (meta && live && live.at) {
+        try {
+          meta.textContent = 'Last live test: ' + fmtTs(live.at);
+        } catch (e) {
+          meta.textContent = 'Last live test: ' + live.at;
+        }
+      } else if (meta && !live) {
+        meta.textContent = '';
+      }
+    }
+
+    function refreshConnectionsPanel() {
+      if (!canAuth()) return Promise.resolve();
+      return fetch('/api/admin/connections', { headers: authHeaders(), credentials: 'include' })
+        .then(function (r) {
+          return r.json();
+        })
+        .then(function (j) {
+          if (j && j.ok) renderConnHealth(j, lastLiveConnResults);
+        })
+        .catch(function () {});
+    }
+
+    function postConnTest(which, detailEl) {
+      var meta = document.getElementById('connHealthMeta');
+      if (meta) meta.textContent = 'Testing…';
+      return fetch('/api/admin/connections/test', {
+        method: 'POST',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, authHeaders()),
+        body: JSON.stringify({ which: which }),
+        credentials: 'include',
+      })
+        .then(function (r) {
+          return r.json().then(function (j) {
+            return { ok: r.ok, j: j };
+          });
+        })
+        .then(function (x) {
+          if (meta) meta.textContent = '';
+          if (!x.ok || !x.j || !x.j.ok) {
+            if (detailEl) detailEl.textContent = (x.j && x.j.error) || 'Test failed';
+            return;
+          }
+          var w = which || 'all';
+          if (w === 'all') {
+            lastLiveConnResults = x.j.live;
+          } else if (x.j.live) {
+            lastLiveConnResults = Object.assign({}, lastLiveConnResults || {}, x.j.live);
+            lastLiveConnResults.at = x.j.live.at || lastLiveConnResults.at;
+          }
+          renderConnHealth(x.j, lastLiveConnResults);
+          if (detailEl && x.j.live) detailEl.textContent = liveSummaryLines(x.j.live);
+        })
+        .catch(function () {
+          if (meta) meta.textContent = '';
+          if (detailEl) detailEl.textContent = 'Network error';
+        });
+    }
+
+    var connTestAllBtn = document.getElementById('connTestAllBtn');
+    if (connTestAllBtn) {
+      connTestAllBtn.addEventListener('click', function () {
+        if (!canAuth()) return;
+        postConnTest('all', document.getElementById('connTestDetail'));
+      });
+    }
+    var settingsPanel = document.getElementById('panel-settings');
+    if (settingsPanel) {
+      settingsPanel.addEventListener('click', function (e) {
+        var btn = e.target && e.target.closest && e.target.closest('[data-conn-test]');
+        if (!btn || !canAuth()) return;
+        var w = btn.getAttribute('data-conn-test');
+        if (!w || w === 'all') return;
+        e.preventDefault();
+        postConnTest(w, document.getElementById('connTestDetail'));
+      });
+    }
+
     var shBtn = document.getElementById('siteHealthBtn');
     var shList = document.getElementById('siteHealthList');
     if (shBtn && shList) {
@@ -3104,5 +3456,232 @@
       searchInput.select();
     }
   });
+
+  function spawnGateStars(container, n) {
+    if (!container) return;
+    container.innerHTML = '';
+    for (var i = 0; i < n; i++) {
+      var s = document.createElement('span');
+      s.className = 'star-particle';
+      s.style.cssText =
+        'left:' +
+        Math.random() * 100 +
+        '%;top:' +
+        Math.random() * 100 +
+        '%;animation-delay:' +
+        Math.random() * 3 +
+        's;animation-duration:' +
+        (2 + Math.random() * 3) +
+        's;';
+      container.appendChild(s);
+    }
+  }
+
+  function showMainChrome() {
+    var gate = document.getElementById('passwordGate');
+    var mainApp = document.getElementById('mainApp');
+    var sidebarOverlay = document.getElementById('sidebarOverlay');
+    var copyToast = document.getElementById('copyToast');
+    if (gate) gate.style.display = 'none';
+    if (mainApp) mainApp.style.display = 'flex';
+    if (sidebarOverlay) sidebarOverlay.style.display = '';
+    if (copyToast) copyToast.style.display = '';
+  }
+
+  function showWelcomeThen(callback) {
+    var welcome = document.getElementById('welcomeOverlay');
+    if (!welcome) {
+      callback();
+      return;
+    }
+    spawnGateStars(document.getElementById('welcomeStars'), 50);
+    welcome.style.display = 'flex';
+    var fill = document.getElementById('welcomeBarFill');
+    var pct = 0;
+    var interval = setInterval(function () {
+      pct += 3;
+      if (fill) fill.style.width = Math.min(pct, 100) + '%';
+      if (pct >= 100) {
+        clearInterval(interval);
+        welcome.classList.add('welcome-exit');
+        setTimeout(function () {
+          welcome.style.display = 'none';
+          welcome.classList.remove('welcome-exit');
+          callback();
+        }, 400);
+      }
+    }, 25);
+  }
+
+  function wireLoginGate() {
+    spawnGateStars(document.getElementById('gateStars'), 40);
+    var gateBox = document.getElementById('gateBox');
+    var loginBox = document.getElementById('gateLoginBox');
+    var bootBox = document.getElementById('gateBootstrapBox');
+    var intro = document.getElementById('gateBootstrapIntro');
+    if (gateBox) gateBox.classList.remove('gate-box--bootstrap');
+    if (loginBox) loginBox.hidden = false;
+    if (bootBox) bootBox.hidden = true;
+    if (intro) intro.hidden = true;
+    var input = document.getElementById('gateInput');
+    var btn = document.getElementById('gateBtn');
+    var errEl = document.getElementById('gateError');
+    function err(t) {
+      if (errEl) errEl.textContent = t || '';
+    }
+    function attempt() {
+      err('');
+      fetch('/api/admin/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: input ? input.value : '' }),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) {
+            return { ok: r.ok, j: j };
+          });
+        })
+        .then(function (x) {
+          if (!x.ok || !x.j.ok) {
+            err(x.j && x.j.error ? x.j.error : 'Login failed');
+            return;
+          }
+          gateResolved = true;
+          showWelcomeThen(function () {
+            showMainChrome();
+            adminConnected = true;
+            updateAdminPill();
+            runInitialRoute();
+            initAdminAuth();
+          });
+        })
+        .catch(function () {
+          err('Network error');
+        });
+    }
+    if (btn) btn.onclick = attempt;
+    if (input) {
+      input.onkeydown = function (e) {
+        if (e.key === 'Enter') attempt();
+      };
+      input.focus();
+    }
+  }
+
+  function wireBootstrapGate() {
+    spawnGateStars(document.getElementById('gateStars'), 40);
+    var gateBox = document.getElementById('gateBox');
+    var loginBox = document.getElementById('gateLoginBox');
+    var bootBox = document.getElementById('gateBootstrapBox');
+    var intro = document.getElementById('gateBootstrapIntro');
+    if (gateBox) gateBox.classList.remove('gate-box--bootstrap');
+    if (loginBox) loginBox.hidden = true;
+    if (bootBox) bootBox.hidden = true;
+    if (intro) intro.hidden = false;
+    var errEl = document.getElementById('gateError');
+    var btn = document.getElementById('gateBootstrapBtn');
+    var revealBtn = document.getElementById('gateBootstrapRevealBtn');
+    function revealBootstrapForm() {
+      if (intro) intro.hidden = true;
+      if (bootBox) bootBox.hidden = false;
+      if (gateBox) {
+        gateBox.classList.add('gate-box--bootstrap');
+        try {
+          gateBox.scrollIntoView({ block: 'start', behavior: 'smooth' });
+        } catch (e) {
+          gateBox.scrollIntoView(true);
+        }
+      }
+      var first = document.getElementById('bootstrapPassword');
+      if (first) first.focus();
+    }
+    if (revealBtn) revealBtn.onclick = revealBootstrapForm;
+    function err(t) {
+      if (errEl) errEl.textContent = t || '';
+    }
+    function gv(id) {
+      var el = document.getElementById(id);
+      return el && el.value ? String(el.value).trim() : '';
+    }
+    function go() {
+      err('');
+      var body = {
+        password: gv('bootstrapPassword'),
+        passwordConfirm: gv('bootstrapPassword2'),
+        supabaseUrl: gv('bootstrapSupabaseUrl'),
+        serviceRoleKey: gv('bootstrapServiceRoleKey'),
+        anonKey: gv('bootstrapAnonKey'),
+        schema: gv('bootstrapSchema') || 'v2',
+        razorpayKeyId: gv('bootstrapRazorpayKeyId'),
+        razorpayKeySecret: gv('bootstrapRazorpayKeySecret'),
+        razorpayWebhookSecret: gv('bootstrapRazorpayWebhookSecret'),
+        kundliAmountPaise: parseInt(gv('bootstrapKundliAmount') || '49900', 10),
+        currency: gv('bootstrapCurrency') || 'INR',
+        googleMapsBrowserKey: gv('bootstrapGoogleMapsKey'),
+      };
+      fetch('/api/admin/auth/bootstrap', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+        .then(function (r) {
+          return r.json().then(function (j) {
+            return { ok: r.ok, j: j };
+          });
+        })
+        .then(function (x) {
+          if (!x.ok || !x.j.ok) {
+            err(x.j && x.j.error ? x.j.error : 'Setup failed');
+            return;
+          }
+          gateResolved = true;
+          showWelcomeThen(function () {
+            showMainChrome();
+            adminConnected = true;
+            updateAdminPill();
+            runInitialRoute();
+            initAdminAuth();
+          });
+        })
+        .catch(function () {
+          err('Network error');
+        });
+    }
+    if (btn) btn.onclick = go;
+  }
+
+  function runGateFlow() {
+    fetch('/api/admin/auth/status', { credentials: 'include' })
+      .then(function (r) {
+        return r.json();
+      })
+      .then(function (j) {
+        if (!j || !j.ok) {
+          wireLoginGate();
+          return;
+        }
+        if (j.authenticated) {
+          gateResolved = true;
+          showMainChrome();
+          adminConnected = true;
+          updateAdminPill();
+          runInitialRoute();
+          initAdminAuth();
+          return;
+        }
+        if (j.needsBootstrap) {
+          wireBootstrapGate();
+          return;
+        }
+        wireLoginGate();
+      })
+      .catch(function () {
+        wireLoginGate();
+      });
+  }
+
+  runGateFlow();
 
 })();
