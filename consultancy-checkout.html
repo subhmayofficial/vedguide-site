@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Consultancy Checkout — Shubhmay</title>
+  <title>Consultancy Checkout — VedGuide</title>
   <link rel="icon" href="/favicon/favicon.ico" sizes="any" />
   <style>
     :root {
@@ -274,7 +274,7 @@
       .sub { font-size: 1.15rem; margin-bottom: 14px; line-height: 1.65; }
     }
   </style>
-  <script src="/js/shubhmay-track.js"></script>
+  <script src="/js/vedguide-track.js"></script>
   <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 </head>
 <body>
@@ -356,10 +356,10 @@
       var activePlan = null;
 
       var leadSession = (function () {
-        if (window.ShubhmayTrack && typeof window.ShubhmayTrack.getSessionId === 'function') {
-          return window.ShubhmayTrack.getSessionId();
+        if (window.VedGuideTrack && typeof window.VedGuideTrack.getSessionId === 'function') {
+          return window.VedGuideTrack.getSessionId();
         }
-        var primary = 'shubhmay_sid';
+        var primary = 'vedguide_sid';
         var legacy = 'sm_site_session';
         var s = null;
         try {
@@ -377,12 +377,12 @@
         try {
           localStorage.setItem(legacy, s);
         } catch (e) {}
-        window._shubhmaySid = s;
+        window._vedguideSid = s;
         return s;
       })();
       window.__smLeadId = window.__smLeadId || null;
-      if (window.ShubhmayTrack && typeof window.ShubhmayTrack.init === 'function') {
-        window.ShubhmayTrack.init({
+      if (window.VedGuideTrack && typeof window.VedGuideTrack.init === 'function') {
+        window.VedGuideTrack.init({
           sourcePage: 'consultancy-checkout',
           eventType: 'consultancy_checkout',
           meta: { page: 'consultancy_checkout', funnel: 'consultancy_checkout' },
@@ -607,7 +607,7 @@
             var options = {
               key: ord.keyId,
               order_id: ord.orderId,
-              name: 'Shubhmay Consultancy',
+              name: 'VedGuide Consultancy',
               description: (activePlan.name || 'Consultancy') + ' · ' + (activePlan.durationMinutes || 0) + ' mins',
               prefill: { name: name, email: email, contact: phone },
               handler: function (response) {

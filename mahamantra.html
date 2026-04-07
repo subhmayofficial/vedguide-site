@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Chamunda Mahamantra | Shubhmay</title>
+  <title>Chamunda Mahamantra | VedGuide</title>
   <meta name="description" content="Chamunda Mahamantra based landing page. Fill the form to unlock and get your mantra routine + free kundli check.">
   <link rel="icon" href="assets/images/favicon-32x32.png" type="image/png" sizes="32x32">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <script src="/js/shubhmay-track.js" defer></script>
+  <script src="/js/vedguide-track.js" defer></script>
   <style>
     :root {
       --maroon:   #1e0610;
@@ -637,7 +637,7 @@
   <!-- HERO -->
   <section class="hero">
     <span class="om-glyph">ॐ</span>
-    <div class="hero-badge">Shubhmay Spiritual Series</div>
+    <div class="hero-badge">VedGuide Spiritual Series</div>
     <h1>Chamunda Mahamantra</h1>
     <p class="hero-sub">Yeh Mahamantra hai — 30 din mein farak feel hoga. Form fill karke aapka mantra + simple jaap routine unlock karo.</p>
   </section>
@@ -804,8 +804,8 @@
   <script>
     (function () {
       document.addEventListener("DOMContentLoaded", function () {
-        if (window.ShubhmayTrack) {
-          ShubhmayTrack.init({ sourcePage: 'mahamantra', meta: { page: 'mahamantra' } });
+        if (window.VedGuideTrack) {
+          VedGuideTrack.init({ sourcePage: 'mahamantra', meta: { page: 'mahamantra' } });
         }
       });
 
@@ -819,14 +819,14 @@
 
       function track(et, pl) {
         if (window.dataLayer) window.dataLayer.push(Object.assign({ event: et }, pl));
-        if (window.ShubhmayTrack) ShubhmayTrack.track(et, pl || {}, {});
+        if (window.VedGuideTrack) VedGuideTrack.track(et, pl || {}, {});
       }
 
       function upsertMahamantraLead(name, phone) {
-        if (!window.ShubhmayTrack || typeof window.ShubhmayTrack.submitLead !== 'function') {
+        if (!window.VedGuideTrack || typeof window.VedGuideTrack.submitLead !== 'function') {
           return Promise.resolve();
         }
-        return window.ShubhmayTrack.submitLead({
+        return window.VedGuideTrack.submitLead({
           name: name,
           phone: phone,
           conversion_form: 'mahamantra_unlock_form',

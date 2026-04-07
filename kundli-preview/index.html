@@ -15,7 +15,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700&family=Inter:wght@400;500;600&display=optional"
     rel="stylesheet">
-  <script src="/js/shubhmay-track.js"></script>
+  <script src="/js/vedguide-track.js"></script>
   <script>
     (function () {
       try {
@@ -27,11 +27,11 @@
           window.history.replaceState({}, document.title, clean);
         }
       } catch (e) { }
-      ShubhmayTrack.init({ sourcePage: 'kundli-preview', meta: { page: 'kundli_preview', funnel: 'kundli_preview' } }).then(function () {
-        ShubhmayTrack.track('step_view', { step_index: 1, step_name: 'form', funnel: 'kundli_preview' }, { eventType: 'site' });
+      VedGuideTrack.init({ sourcePage: 'kundli-preview', meta: { page: 'kundli_preview', funnel: 'kundli_preview' } }).then(function () {
+        VedGuideTrack.track('step_view', { step_index: 1, step_name: 'form', funnel: 'kundli_preview' }, { eventType: 'site' });
       });
-      window._shubhmayTrack = function (et, pl) {
-        ShubhmayTrack.track(et, pl || {}, {});
+      window._vedguideTrack = function (et, pl) {
+        VedGuideTrack.track(et, pl || {}, {});
       };
 
       if ('performance' in window && 'PerformanceObserver' in window) {
@@ -58,8 +58,8 @@
           lcpObserver.observe({ type: 'largest-contentful-paint', buffered: true });
 
           window.addEventListener('beforeunload', function () {
-            if (window._shubhmayTrack && (fcp || lcp)) {
-              window._shubhmayTrack('web_vital', {
+            if (window._vedguideTrack && (fcp || lcp)) {
+              window._vedguideTrack('web_vital', {
                 page: 'kundli_preview',
                 funnel: 'kundli_preview',
                 fcp: fcp,
@@ -82,7 +82,7 @@
       })(window, document, 'script', 'dataLayer', 'GTM-MGBML6GZ');
     });
   </script>
-  <title>Apni Kundli Check Karein | Shubhmay – ज्योतिष</title>
+  <title>Apni Kundli Check Karein | VedGuide – ज्योतिष</title>
   <meta name="description" content="Apni Kundli Check Karein aur jaane apna future. Vedic astrology analysis – ₹399.">
   <style>
     :root {
@@ -1245,7 +1245,7 @@
         style="width: 100%; max-width: 440px; position: relative; justify-content: flex-start; padding-left: 16px;">
         <span class="om-symbol">ॐ</span>
         <div>
-          <div class="navbar-title">Shubhmay</div>
+          <div class="navbar-title">VedGuide</div>
           <div class="navbar-sub">Jyotish & Kundli</div>
         </div>
         <div class="lang-select">
@@ -2033,7 +2033,7 @@
 
       function emit(event, payload) {
         try { window.dataLayer = window.dataLayer || []; window.dataLayer.push(Object.assign({ event }, payload)); } catch (e) { }
-        if (window._shubhmayTrack) window._shubhmayTrack(event, Object.assign({ page: 'kundli_preview' }, payload));
+        if (window._vedguideTrack) window._vedguideTrack(event, Object.assign({ page: 'kundli_preview' }, payload));
       }
 
       function normalizeIndiaPhone(raw) {
@@ -2095,10 +2095,10 @@
       }
 
       function getCanonicalSessionId() {
-        if (window.ShubhmayTrack && typeof window.ShubhmayTrack.getSessionId === 'function') {
-          return window.ShubhmayTrack.getSessionId();
+        if (window.VedGuideTrack && typeof window.VedGuideTrack.getSessionId === 'function') {
+          return window.VedGuideTrack.getSessionId();
         }
-        var primary = 'shubhmay_sid';
+        var primary = 'vedguide_sid';
         var legacy = 'sm_site_session';
         var sid = '';
         try {
@@ -2155,8 +2155,8 @@
       }
 
       function saveKundliLeadToSupabase(payload) {
-        if (!window._shubhmaySupabase) return Promise.resolve();
-        var sb = window._shubhmaySupabase;
+        if (!window._vedguideSupabase) return Promise.resolve();
+        var sb = window._vedguideSupabase;
         var customerInsert = {
           name: payload.name || '',
           phone: payload.phone || '',
@@ -2250,8 +2250,8 @@
 
         function showPreviewPanel() {
           try {
-            sessionStorage.setItem('shubhmay_kundli_preview_phone', phone);
-            sessionStorage.setItem('shubhmay_kundli_preview_done', '1');
+            sessionStorage.setItem('vedguide_kundli_preview_phone', phone);
+            sessionStorage.setItem('vedguide_kundli_preview_done', '1');
           } catch (e) { }
           emit('kundli_preview_submit', {
             name: name,

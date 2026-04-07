@@ -575,7 +575,7 @@
                     <h2 class="summary-title">Order summary</h2>
                     <div class="product-item">
                         <div class="product-img-box">
-                            <img src="https://primedit-cdn.b-cdn.net/shubhmay-lp-kundli/astroguruashutoshsize.jpg" alt="" width="70" height="70">
+                            <img src="https://primedit-cdn.b-cdn.net/vedguide-lp-kundli/astroguruashutoshsize.jpg" alt="" width="70" height="70">
                         </div>
                         <div>
                             <p class="product-name">Personalized Janam Kundli Report</p>
@@ -651,7 +651,7 @@
             var birthPlaceChosen = false;
 
             var sessionId = (function () {
-                var primary = 'shubhmay_sid';
+                var primary = 'vedguide_sid';
                 var legacy = 'sm_site_session';
                 var s = '';
                 try {
@@ -667,7 +667,7 @@
                 } catch (e) {}
                 sessionStorage.setItem(primary, s);
                 sessionStorage.setItem(legacy, s);
-                window._shubhmaySid = s;
+                window._vedguideSid = s;
                 return s;
             })();
             var checkoutSessionId = (function () {
@@ -989,7 +989,7 @@
                         var options = {
                             key: j.keyId,
                             order_id: j.orderId,
-                            name: 'Shubhmay',
+                            name: 'VedGuide',
                             description: 'Personalized Premium Kundli Report',
                             prefill: j.prefill || {},
                             handler: function (response) {

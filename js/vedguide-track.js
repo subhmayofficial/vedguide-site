@@ -1,13 +1,13 @@
 /**
- * Shubhmay unified tracking — all events go through /api/track/* (v2 DB).
- * Load once per page: <script src="/js/shubhmay-track.js" defer></script>
+ * VedGuide unified tracking — all events go through /api/track/* (v2 DB).
+ * Load once per page: <script src="/js/vedguide-track.js" defer></script>
  */
 (function (global) {
-  var STORAGE_SID = 'shubhmay_sid';
+  var STORAGE_SID = 'vedguide_sid';
   var STORAGE_SID_LEGACY = 'sm_site_session';
-  var STORAGE_TS = 'shubhmay_session_start_ts';
+  var STORAGE_TS = 'vedguide_session_start_ts';
   /** Stable per-browser id (survives session_id rotation); one device ≈ one client_id. */
-  var STORAGE_CLIENT_ID = 'shubhmay_client_id';
+  var STORAGE_CLIENT_ID = 'vedguide_client_id';
 
   function storageGet(key, store) {
     try {
@@ -44,7 +44,7 @@
     storageSet(STORAGE_SID, sid, global.sessionStorage);
     storageSet(STORAGE_SID_LEGACY, sid, global.sessionStorage);
     storageSet(STORAGE_SID_LEGACY, sid, global.localStorage);
-    global._shubhmaySid = sid;
+    global._vedguideSid = sid;
     return sid;
   }
 
@@ -54,7 +54,7 @@
       cid = 'c_' + Date.now() + '_' + Math.random().toString(36).slice(2, 12);
       storageSet(STORAGE_CLIENT_ID, cid, global.localStorage);
     }
-    global._shubhmayClientId = cid;
+    global._vedguideClientId = cid;
     return cid;
   }
 
@@ -63,7 +63,7 @@
       var params = new URLSearchParams(global.location.search);
       ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
         var v = params.get(k);
-        if (v && !sessionStorage.getItem('shubhmay_' + k)) sessionStorage.setItem('shubhmay_' + k, v);
+        if (v && !sessionStorage.getItem('vedguide_' + k)) sessionStorage.setItem('vedguide_' + k, v);
       });
     } catch (e) {}
   }
@@ -71,7 +71,7 @@
   function utmPayload() {
     var o = {};
     ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].forEach(function (k) {
-      var v = sessionStorage.getItem('shubhmay_' + k);
+      var v = sessionStorage.getItem('vedguide_' + k);
       if (v) o[k] = v;
     });
     return o;
@@ -201,8 +201,8 @@
     getClientId: getOrCreateClientId,
   };
 
-  global.ShubhmayTrack = api;
-  global._shubhmayTrack = function (et, pl) {
+  global.VedGuideTrack = api;
+  global._vedguideTrack = function (et, pl) {
     return track(et, pl || {}, {});
   };
 })(typeof window !== 'undefined' ? window : this);
